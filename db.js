@@ -1,7 +1,7 @@
 const {Sequelize} = require('sequelize');
 
 module.exports = new Sequelize(
-    'telega_bot',
+    'ozon_party_bot',
     'root',
     'root',
     {
