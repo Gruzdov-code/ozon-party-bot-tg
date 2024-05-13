@@ -63,7 +63,7 @@ const start = async () => {
             return startGame(chatId)
         }
         const user = await UserModel.findOne({chatId})
-        if (data == chats[chatId]) {
+        if (Number(data) === chats[chatId]) {
             user.right += 1;
             await bot.sendMessage(chatId, `Поздравляю, ты отгадал цифру ${chats[chatId]}`, againOptions);
         } else {
