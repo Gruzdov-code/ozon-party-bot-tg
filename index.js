@@ -1,77 +1,102 @@
-const TelegramApi = require('node-telegram-bot-api')
-const {gameOptions, againOptions} = require('./options')
-const sequelize = require('./db');
-const UserModel = require('./models');
+import {Telegraf} from "telegraf";
+import {showMenu} from "./menu.js";
+import fs from "fs";
+const data = fs.readFileSync("./users.json", "utf8", (err, data) => {
+  if (err) throw err;
 
-const token = '6476063403:AAGQmIo4bMkHEIkWwa77qNfo3dYQuO_03eQ'
-
-const bot = new TelegramApi(token, {polling: true})
-
-const chats = {}
-
-
-const startGame = async (chatId) => {
-    await bot.sendMessage(chatId, `Сейчас я загадаю цифру от 0 до 9, а ты должен ее угадать!`);
-    const randomNumber = Math.floor(Math.random() * 10)
-    chats[chatId] = randomNumber;
-    await bot.sendMessage(chatId, 'Отгадывай', gameOptions);
-}
-
-const start = async () => {
-
-    try {
-        await sequelize.authenticate()
-        await sequelize.sync()
-    } catch (e) {
-        console.log('Подключение к бд сломалось', e)
+});
+  global.users = JSON.parse(data);
+  global.userIdList= Object.keys(users)
+// const HttpsProxyAgent = require('https-proxy-agent');
+// Общие настройки
+const config = {
+  "token": "6476063403:AAGQmIo4bMkHEIkWwa77qNfo3dYQuO_03eQ", // Токен бота
+  "admin": 111, // я
+  // "admin": 451019148, // я
+  "barman": 639611757, // Вова
+  "barman4": 559085599, // Проша
+  "barman2": 197813146, // Лера
+  // "barman3": 418259847 // Колт
+};
+// Создаем объект бота
+const bot = new Telegraf(config.token, {
+      // Если надо ходить через прокси - укажите: user, pass, host, port
+      // telegram: { agent: new HttpsProxyAgent('http://user:pass@host:port') }
     }
+);
+// Текстовые настройки
+let replyText = {
+  "helloAdmin": "Привет админ, ждем сообщения от пользователей",
+  "helloUser":  "Приветствую, отправьте мне сообщение. Постараюсь ответить в ближайшее время.",
+  "replyWrong": "Для ответа пользователю используйте функцию Ответить/Reply."
+};
+// Проверяем пользователя на права
+let isAdmin = (userId) => {
+  return userId == config.admin;
+};
+let isBarman = (userId) => {
+  return userId == (config.barman || config.barman2 || config.barman4);
+};
 
-    bot.setMyCommands([
-        {command: '/start', description: 'Начальное приветствие'},
-        {command: '/info', description: 'Получить информацию о пользователе'},
-        {command: '/game', description: 'Игра угадай цифру'},
-    ])
 
-    bot.on('message', async msg => {
-        const text = msg.text;
-        const chatId = msg.chat.id;
+// const
+const coctailList = userIdList.flatMap((el)=>{
+  const result=[]
+  result.push(...users[el].coctailList)
+  return [...result]
+})
+const availableCoctails = []
+ coctailList.map((el)=>{
+  el.isAvailable ? availableCoctails.push([{text:el.fullName , callback_data:el.shortName}]) : ''
+  return availableCoctails
+})
 
-        try {
-            if (text === '/start') {
-                await UserModel.create({chatId})
-                await bot.sendSticker(chatId, 'https://tlgrm.ru/_/stickers/ea5/382/ea53826d-c192-376a-b766-e5abc535f1c9/7.webp')
-                return bot.sendMessage(chatId, `Добро пожаловать в телеграм бот OZON Party`);
-            }
-            if (text === '/info') {
-                const user = await UserModel.findOne({chatId})
-                return bot.sendMessage(chatId, `Тебя зовут ${msg.from.first_name} ${msg.from.last_name}, в игре у тебя правильных ответов ${user.right}, неправильных ${user.wrong}`);
-            }
-            if (text === '/game') {
-                return startGame(chatId);
-            }
-            return bot.sendMessage(chatId, 'Я тебя не понимаю, попробуй еще раз!)');
-        } catch (e) {
-            return bot.sendMessage(chatId, 'Произошла какая то ошибочка!)');
-        }
+ const replyToUser = async (query, searchCoctail, userId) =>{
+      bot.telegram.sendMessage(query.update.callback_query.from.id, 'Вжух! Мы уже готовим твой коктейль. +\n' +
+        `Номер заказа: ${searchCoctail.shortName+users[userId].orders.length}`)
+      bot.telegram.sendMessage(query.update.callback_query.from.id, 'А пока ждешь, добавь себе стикер-пак от OZON Банка для особо важных переговоров😎')
+      query.replyWithSticker('CAACAgIAAxkBAAIC0mZTlQ_Saj1mRPa8XDt8sUCaXDiSAALKQgACl_AxSsv-hHMxONVnNQQ')
 
-    })
-
-    bot.on('callback_query', async msg => {
-        const data = msg.data;
-        const chatId = msg.message.chat.id;
-        if (data === '/again') {
-            return startGame(chatId)
-        }
-        const user = await UserModel.findOne({chatId})
-        if (Number(data) === chats[chatId]) {
-            user.right += 1;
-            await bot.sendMessage(chatId, `Поздравляю, ты отгадал цифру ${chats[chatId]}`, againOptions);
-        } else {
-            user.wrong += 1;
-            await bot.sendMessage(chatId, `К сожалению ты не угадал, бот загадал цифру ${chats[chatId]}`, againOptions);
-        }
-        await user.save();
-    })
 }
 
-start()
+
+// Перенаправляем админу от пользователя или уведомляем админа об ошибке
+// Старт бота
+bot.start((ctx) => {
+  // if ()
+  console.log('ctx', ctx.message.from.id)
+  ctx.reply(isAdmin(ctx.message.from.id)
+      ? replyText.helloAdmin
+      : replyText.helloUser);
+});
+// Слушаем на наличие объекта message
+bot.on('message', (ctx) => {
+  console.log('ctx',ctx.message)
+if (ctx.message.text=='start'){
+  showMenu(bot,ctx.message.chat.id,availableCoctails)
+}
+})
+
+bot.on('callback_query', query => {
+
+
+  for(let userId in users) {
+    if (!users) return
+   const searchCoctail = users[userId].coctailList.find((coctail)=> coctail.shortName===query.update.callback_query.data)
+    if (searchCoctail){
+      users[userId].orders.push({
+        "number": searchCoctail.shortName+users[userId].orders.length,
+        "createdAt": new Date(),
+        "isDone": false
+      })
+      fs.writeFileSync("./users.json", JSON.stringify(global.users), (err) => {
+        if (err) throw err;
+      });
+        replyToUser(query,searchCoctail, userId).then(res=>(console.log('res',res))).catch(err=>( console.log('err',err)))
+    }
+  }
+})
+
+
+// запускаем бот
+bot.launch();
