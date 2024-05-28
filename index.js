@@ -1,6 +1,7 @@
 import {Telegraf} from "telegraf";
 import {showMenu} from "./menu.js";
 import fs from "fs";
+import {quote} from "telegraf/format";
 const data = fs.readFileSync("./users.json", "utf8", (err, data) => {
   if (err) throw err;
 
@@ -41,6 +42,12 @@ let isBarman = (userId) => {
 
 
 // const
+setInterval(()=>{
+fs.writeFile("./users.json", JSON.stringify(global.users), (err) => {
+    if (err) throw err;
+});
+},10000)
+
 const coctailList = userIdList.flatMap((el)=>{
   const result=[]
   result.push(...users[el].coctailList)
@@ -51,6 +58,11 @@ const availableCoctails = []
   el.isAvailable ? availableCoctails.push([{text:el.fullName , callback_data:el.shortName}]) : ''
   return availableCoctails
 })
+const deliteAvailableCoctails = []
+ coctailList.map((el)=>{
+  deliteAvailableCoctails.push([{text: el.isAvailable ? el.fullName+' ✅' : el.fullName+ ' ❌', callback_data:el.shortName}])
+  return deliteAvailableCoctails
+})
 
  const replyToUser = async (query, searchCoctail, userId) =>{
      bot.telegram.sendMessage(query.update.callback_query.from.id, 'Вжух! Мы уже готовим твой коктейль. \n' +
@@ -59,23 +71,38 @@ const availableCoctails = []
        query.replyWithSticker('CAACAgIAAxkBAAIC0mZTlQ_Saj1mRPa8XDt8sUCaXDiSAALKQgACl_AxSsv-hHMxONVnNQQ')
 }
 
-const writeOrder = async () => {
-     await fs.writeFile("./users.json", JSON.stringify(global.users), (err) => {
-         if (err) throw err;
-     })
- }
  const sendReadyOrderToUser = async (query,userId) => {
      const textMgs = query.update.callback_query.message.text
-     const  str1 = textMgs.indexOf("№")+1
+     const  str1 = textMgs.indexOf("№")+2
      const str2 = textMgs.indexOf(",")
      const orderNumber=  textMgs.slice(str1,str2)
-     console.log('orderNumber',orderNumber)
-     console.log('queryyyrr', query)
-     // const searchClient = users[userId].orders.find((order)=> order.number===orderNumber ? order.client : '')
-     // console.log('searchClient',searchClient)
-     // query.reply(orderNumber)
-     await  bot.telegram.sendMessage(451019148, `Ваш заказ №${orderNumber} готов `)
+     const searchClient = users[userId].orders.find((order)=> order.number==orderNumber ? order.client : '').client
+     await  bot.telegram.sendMessage(searchClient, `Ваш заказ № ${orderNumber} готов `)
+     await bot.telegram.editMessageReplyMarkup(query.update.callback_query.message.chat.id, query.update.callback_query.message.message_id, {reply_markup: {inline_keyboard: [[{text: '', callback_data: ''}]]}}
+     )
+     let newText = query.update.callback_query.message.text+' ✅'
+     await bot.telegram.editMessageText(query.update.callback_query.message.chat.id, query.update.callback_query.message.message_id,  0,newText)
  }
+
+ let isDelite = false
+const coctailIsOver = async (query) => {
+    if (!isDelite) return
+    const userId = query.update.callback_query.from.id
+    const textMgs = query.update.callback_query.message.text
+
+   const searchCoctail = users[userId].coctailList.findIndex((coctail) => coctail.shortName === query.update.callback_query.data)
+    if(users[userId].coctailList[searchCoctail].isAvailable===false){
+        users[userId].coctailList[searchCoctail].isAvailable = true
+        await query.reply(`Вы добавили коктейль ${users[userId].coctailList[searchCoctail].fullName} в список`)
+    }
+    else {
+        users[userId].coctailList[searchCoctail].isAvailable = false
+   await query.reply(`Вы убрали коктейль ${users[userId].coctailList[searchCoctail].fullName} из списка`)
+        isDelite=false
+
+    }
+}
+
  const newOrderFromUser = async (query,userId) => {
      for (let userId in users) {
          const searchCoctail = users[userId].coctailList.find((coctail) => coctail.shortName === query.update.callback_query.data)
@@ -95,9 +122,8 @@ const writeOrder = async () => {
              })
 
              await replyToUser(query, searchCoctail, userId)
-             fs.writeFile("./users.json", JSON.stringify(global.users), (err) => {
-               if (err) throw err;
-             });
+
+
          }
      }
  }
@@ -105,34 +131,39 @@ const writeOrder = async () => {
 
 
 
-// Старт бота
-bot.start((ctx) => {
-  console.log('ctx', ctx.message.from.id)
-  ctx.reply(isAdmin(ctx.message.from.id)
-      ? replyText.helloAdmin
-      : replyText.helloUser);
-});
 // Слушаем на наличие объекта message
 bot.on('message', (ctx) => {
   console.log('ctx',ctx.message)
-if (ctx.message.text=='start'){
-  showMenu(bot,ctx.message.chat.id,availableCoctails)
+if (ctx.message.text=='/start'){
+    const textMenu ="Привет! Как насчет отпускного коктейля?\n" +
+        "Выбирай любой"
+  showMenu(bot,ctx.message.chat.id,availableCoctails, textMenu)
 }
+    if (users[ctx.from.id]) {
+        if (ctx.message.text == '/isover') {
+            showMenu(bot, ctx.message.chat.id, deliteAvailableCoctails,"Выберите коктейль чтобы убрать или вернуть его\n"+
+                `✅ — доступные  \n❌ — недоступные \n`)
+            isDelite=true
+        }
+    }
+
 })
 
 // Слушаем на колбэки от кнопок
-bot.on('callback_query', async query => {
+bot.on('callback_query', async (query) => {
 
     if (!users) return
       if (users[query.update.callback_query.from.id]){
               switch (query.update.callback_query.data){
                   case 'readyOrder':
-                       await sendReadyOrderToUser(query,query.update.callback_query.from.id)
+                      await sendReadyOrderToUser(query,query.update.callback_query.from.id)
                       break;
-              }
-              // sendOrderToBarman(query, userId)
 
-              // break;
+              }
+                      if (isDelite){
+                      await coctailIsOver(query)
+                      }
+
 
       }
       else {

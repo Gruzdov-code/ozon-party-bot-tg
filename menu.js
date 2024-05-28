@@ -1,8 +1,7 @@
 
-export const showMenu = (bot, chatId, availableCoctails) => {
+export const showMenu = (bot, chatId, availableCoctails, text) => {
 
-  bot.telegram.sendMessage(chatId, "Привет! Как насчет отпускного коктейля?\n" +
-      "Выбирай любой", {
+  bot.telegram.sendMessage(chatId, text , {
     reply_markup: {
       inline_keyboard:
       availableCoctails
@@ -10,6 +9,7 @@ export const showMenu = (bot, chatId, availableCoctails) => {
     },
   });
 };
+//
 
  const closeMenu = (bot, chatId) => {
   bot.telegram.sendMessage(chatId, "Клавиатура закрыта", {
