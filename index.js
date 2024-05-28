@@ -11,7 +11,8 @@ const data = fs.readFileSync("./users.json", "utf8", (err, data) => {
 // const HttpsProxyAgent = require('https-proxy-agent');
 // Общие настройки
 const config = {
-  "token": "6476063403:AAGQmIo4bMkHEIkWwa77qNfo3dYQuO_03eQ", // Токен бота
+  "token": "7357115883:AAE4DozS0fVat5QCqSF4QgyMcOX7oKSyi4w", // Токен бота
+  // "token": "6476063403:AAGQmIo4bMkHEIkWwa77qNfo3dYQuO_03eQ", // Токен бота
   "admin": 111, // я
   // "admin": 451019148, // я
   "barman": 639611757, // Вова
