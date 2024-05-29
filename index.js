@@ -2,6 +2,7 @@ import { Telegraf } from "telegraf";
 import { showMenu } from "./menu.js";
 import fs from "fs";
 import { quote } from "telegraf/format";
+import { log } from "console";
 const data = fs.readFileSync("./users.json", "utf8", (err, data) => {
   if (err) throw err;
 });
@@ -10,8 +11,8 @@ global.userIdList = Object.keys(users);
 // const HttpsProxyAgent = require('https-proxy-agent');
 // Общие настройки
 const config = {
-  token: "7357115883:AAE4DozS0fVat5QCqSF4QgyMcOX7oKSyi4w", // Токен бота
-  // "token": "6476063403:AAGQmIo4bMkHEIkWwa77qNfo3dYQuO_03eQ", // Токен бота
+  token: "7357115883:AAE4DozS0fVat5QCqSF4QgyMcOX7oKSyi4w", // Токен бота на серваке
+  // token: "6476063403:AAGQmIo4bMkHEIkWwa77qNfo3dYQuO_03eQ", // Токен бота
   admin: 111, // я
   // "admin": 451019148, // я
   barman: 639611757, // Вова
@@ -55,16 +56,6 @@ coctailList.map((el) => {
       ])
     : "";
   return availableCoctails;
-});
-const deliteAvailableCoctails = [];
-coctailList.map((el) => {
-  deliteAvailableCoctails.push([
-    {
-      text: el.isAvailable ? el.fullName + " ✅" : el.fullName + " ❌",
-      callback_data: el.shortName,
-    },
-  ]);
-  return deliteAvailableCoctails;
 });
 
 const replyToUser = async (query, coctailNumber) => {
@@ -113,61 +104,63 @@ const sendReadyOrderToUser = async (query, userId) => {
   showMenu(bot, searchClient, availableCoctails, textMenu);
 };
 
-let isDelite = false;
 const coctailIsOver = async (query) => {
-    console.log('queryyyyy',query);
-  if (!isDelite) return;
   const userId = query.update.callback_query.from.id;
+  const shortName = query.update.callback_query.data?.split("___")[0];
+
   const searchCoctail = users[userId].coctailList.findIndex(
-    (coctail) => coctail.shortName === query.update.callback_query.data
+    (coctail) => coctail.shortName === shortName
   );
-  if (users[userId].coctailList[searchCoctail].isAvailable === false) {
-      users[userId].coctailList[searchCoctail].isAvailable = true;
-      deliteMenu(query)
-    await query.reply(
+  log(
+    "users[userId].coctailList[searchCoctail]?.isAvailable",
+    users[userId].coctailList[searchCoctail]?.isAvailable
+  );
+  if (users[userId].coctailList[searchCoctail]?.isAvailable === false) {
+    log("zahel");
+    users[userId].coctailList[searchCoctail].isAvailable = true;
+    await deliteMenu(query);
+    await bot.telegram.sendMessage(
+      query.update.callback_query.from.id,
       `Вы добавили коктейль ${users[userId].coctailList[searchCoctail].fullName} в список`
     );
-  } else {
-      users[userId].coctailList[searchCoctail].isAvailable = false;
-      deliteMenu(query)
-    await query.reply(
+  } else if (users?.[userId]?.coctailList?.[searchCoctail]?.isAvailable) {
+    users[userId].coctailList[searchCoctail].isAvailable = false;
+    await deliteMenu(query);
+    await bot.telegram.sendMessage(
+      query.update.callback_query.from.id,
       `Вы убрали коктейль ${users[userId].coctailList[searchCoctail].fullName} из списка`
     );
-    isDelite = false; //вниз?
   }
 };
 
 const newOrderFromUser = async (query) => {
-    console.log("query22222", query);
   for (let userId in users) {
     const client = query.update.callback_query.from.id;
-      const isBusy = users[userId].orders
-        .filter((order) => order.client === client)
-        .some((order) => {
-          console.log("isdone", order.isDone);
+    const isBusy = users[userId].orders
+      .filter((order) => order.client === client)
+      .some((order) => {
+        console.log("isdone", order.isDone);
         return order?.isDone === false;
-
-        });
-      if (isBusy) {
-          return
-      }
+      });
+    if (isBusy) {
+      return;
+    }
     const searchCoctail = users[userId].coctailList.find(
       (coctail) => coctail.shortName === query.update.callback_query.data
     );
     if (searchCoctail) {
       const coctailNumber =
         searchCoctail.shortName + users[userId].orders.length;
-        console.log("coctailNumber", coctailNumber);
-        if (!searchCoctail.isAvailable) {
-                 bot.telegram.sendMessage(
-                   query.update.callback_query.from.id,
-                   "Извините, коктейль закончился, ваше меню было обновлено"
-            );
-                deliteMenu(query);
-              await showMenu(bot, client, availableCoctails, textUpdateMenu);
+      if (!searchCoctail.isAvailable) {
+        bot.telegram.sendMessage(
+          query.update.callback_query.from.id,
+          "Извините, коктейль закончился, ваше меню было обновлено"
+        );
+        deliteMenu(query);
+        await showMenu(bot, client, availableCoctails, textUpdateMenu);
 
-            return
-        }
+        return;
+      }
       await bot.telegram.sendMessage(
         userId,
         `Заказ № ${coctailNumber}, коктейль ${searchCoctail.fullName}`,
@@ -204,25 +197,28 @@ const deliteMenu = async (query) => {
 
 // Слушаем на наличие объекта message
 bot.on("message", (ctx) => {
-  console.log("ctx", ctx.message);
   if (ctx.message.text == "/start") {
-    const client = ctx.message.from.id;
-    // const newArrayForJSON = users[userId].orders
-    //   .filter((order) => order.client !== client)
-    // users[userId].orders = newArrayForJSON;
-
     showMenu(bot, ctx.message.chat.id, availableCoctails, textMenu);
   }
   if (users[ctx.from.id]) {
     if (ctx.message.text == "/isover") {
+      const searchCoctail = users[ctx.from.id].coctailList.map((coctail) => [
+        {
+          text: coctail.isAvailable
+            ? coctail.fullName + " ✅"
+            : coctail.fullName + " ❌",
+          callback_data: coctail.shortName + "___delite",
+        },
+      ]);
+
+      log("searchCoctail", searchCoctail);
       showMenu(
         bot,
         ctx.message.chat.id,
-        deliteAvailableCoctails,
+        searchCoctail,
         "Выберите коктейль чтобы убрать или вернуть его\n" +
           `✅ — доступные  \n❌ — недоступные \n`
       );
-      isDelite = true;
     }
   }
 });
@@ -231,12 +227,13 @@ bot.on("message", (ctx) => {
 bot.on("callback_query", async (query) => {
   if (!users) return;
   if (users[query.update.callback_query.from.id]) {
+    const callbackData = query.update.callback_query.data?.split("___");
     switch (query.update.callback_query.data) {
       case "readyOrder":
         await sendReadyOrderToUser(query, query.update.callback_query.from.id);
         break;
     }
-    if (isDelite) {
+    if (callbackData[1] === "delite") {
       await coctailIsOver(query);
     }
   } else {
