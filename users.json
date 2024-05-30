@@ -1,1 +1,55 @@
-{"418259847":{"username":"№1","coctailList":[{"fullName":"Пляжный Апероль","shortName":"ПА","isAvailable":true},{"fullName":"Джин Бризз","shortName":"ДБ","isAvailable":false},{"fullName":"МохитОZON Банк эдишн","shortName":"МО","isAvailable":true}],"orders":[]},"451019148":{"username":"№2","coctailList":[{"fullName":"Виски, кола. Королева танцпола","shortName":"ВК","isAvailable":true},{"fullName":"Пиратский ром&кола","shortName":"РК","isAvailable":true},{"fullName":"Негрони без SPF","shortName":"НГ","isAvailable":true},{"fullName":"Отпускной Дайкири","shortName":"ОД","isAvailable":true}],"orders":[]}}
+{
+	"688781186": {
+		"username": "№1",
+		"coctailList": [
+			{
+				"fullName": "Виски, кола. Королева танцпола",
+				"shortName": "ВК",
+				"isAvailable": true
+			},
+			{
+				"fullName": "Пиратский ром&кола",
+				"shortName": "РК",
+				"isAvailable": true
+			}
+		],
+		"orders": []
+	},
+	"1036639334": {
+		"username": "№2",
+		"coctailList": [
+			{
+				"fullName": "Пляжный Апероль",
+				"shortName": "ПА",
+				"isAvailable": true
+			},
+			{
+				"fullName": "МохитОZON Банк эдишн",
+				"shortName": "МО",
+				"isAvailable": true
+			}
+		],
+		"orders": []
+	},
+	"5993584": {
+		"username": "№3",
+		"coctailList": [
+			{
+				"fullName": "Джин Бризз",
+				"shortName": "ДБ",
+				"isAvailable": false
+			},
+			{
+				"fullName": "Негрони без SPF",
+				"shortName": "НГ",
+				"isAvailable": true
+			},
+			{
+				"fullName": "Отпускной Дайкири",
+				"shortName": "ОД",
+				"isAvailable": true
+			}
+		],
+		"orders": []
+	}
+}

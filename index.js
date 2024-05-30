@@ -88,6 +88,10 @@ const sendReadyOrderToUser = async (query, userId) => {
     searchClient,
     `Ваш заказ № ${orderNumber} готов! Подойдите к стойке ${users[userId].username}.`
   );
+  await bot.telegram.sendPhoto(
+    searchClient,
+    "https://disk.yandex.ru/i/tTpny0EsgyUh-w"
+  );
   await bot.telegram.editMessageReplyMarkup(
     query.update.callback_query.message.chat.id,
     query.update.callback_query.message.message_id,
@@ -143,7 +147,11 @@ const newOrderFromUser = async (query) => {
         return order?.isDone === false;
       });
     if (isBusy) {
-      return;
+          await bot.telegram.sendMessage(
+            query.update.callback_query.from.id,
+            `Ваш коктейль ${users[userId].coctailList[searchCoctail].fullName} уже готовится`
+          );
+      return
     }
     const searchCoctail = users[userId].coctailList.find(
       (coctail) => coctail.shortName === query.update.callback_query.data
