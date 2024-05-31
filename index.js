@@ -82,8 +82,9 @@ const sendReadyOrderToUser = async (query, userId) => {
   const searchOrder = users[userId].orders.find((order) =>
     order.number == orderNumber ? order.client : ""
   );
-  console.log(searchOrder);
+  console.log("searchOrder", searchOrder);
   const searchClient = searchOrder.client;
+  console.log('searchClient', searchClient);
   searchOrder.isDone = true;
   await bot.telegram.sendMessage(
     searchClient,
@@ -93,18 +94,19 @@ const sendReadyOrderToUser = async (query, userId) => {
     searchClient,
     "https://disk.yandex.ru/i/tTpny0EsgyUh-w"
   );
-  await bot.telegram.editMessageReplyMarkup(
-    query.update.callback_query.message.chat.id,
-    query.update.callback_query.message.message_id,
-    { reply_markup: { inline_keyboard: [[{ text: "", callback_data: "" }]] } }
-  );
+  await deliteMenu(query);
   let newText = query.update.callback_query.message.text + " ✅";
-  await bot.telegram.editMessageText(
-    query.update.callback_query.message.chat.id,
-    query.update.callback_query.message.message_id,
-    0,
-    newText
-  );
+  try {
+
+    await query.editMessageText(
+      query.update.callback_query.message.chat.id,
+      query.update.callback_query.message.message_id,
+      0,
+      newText
+    );
+  } catch (error) {
+console.log('err',error);
+  }
 
   showMenu(bot, searchClient, availableCoctails, textMenu);
 };
@@ -191,14 +193,16 @@ const newOrderFromUser = async (query) => {
 };
 
 const deliteMenu = async (query) => {
-  await bot.telegram.editMessageReplyMarkup(
+    try {
+
+  await bot.telegram.deleteMessage(
     query.update.callback_query.message.chat.id,
-    query.update.callback_query.message.message_id,
-    {
-      reply_markup: { inline_keyboard: [[{ text: "", callback_data: "" }]] },
-    }
+    query.update.callback_query.message.message_id
   );
-};
+    } catch (error) {
+      console.log("errr", error);
+    }
+    };
 
 // Слушаем на наличие объекта message
 bot.on("message", (ctx) => {
